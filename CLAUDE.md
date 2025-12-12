@@ -208,3 +208,62 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Working with Claude Code and Spec-Driven Workflows
+
+This section describes how to work with Claude Code and spec-driven workflows for the Todo In-Memory Python Console Application.
+
+### Project Overview
+This project follows a spec-driven development methodology as defined in the constitution. All features must be documented as spec files before implementation.
+
+### Directory Structure
+- `.specify/memory/constitution.md` — Project constitution and principles
+- `specs-history/` — All feature specifications
+- `src/` — Python source code
+- `history/prompts/` — All Prompt History Records
+- `README.md` — Project documentation
+- `CLAUDE.md` — This file, describing Claude Code workflows
+
+### Development Workflow
+1. **Specification**: Create a spec file in `specs-history/` with a unique incremental filename
+2. **Implementation**: Implement features based strictly on the spec
+3. **Documentation**: Create PHRs for all significant changes
+4. **Testing**: Add unit tests to verify functionality
+5. **Commit**: Commit changes with messages referencing the related spec file
+
+### Core Features Implemented
+All five mandatory core features from the constitution are implemented:
+1. **Add Task**: Creates new tasks with unique IDs, titles, and descriptions
+2. **View Tasks**: Lists all tasks with completion status
+3. **Update Task**: Modifies existing task titles and descriptions
+4. **Delete Task**: Removes tasks by ID
+5. **Mark Complete/Incomplete**: Toggles task completion status
+
+### CLI Commands
+- `python -m src.main add "Title" "Description"` - Add a new task
+- `python -m src.main list` - View all tasks
+- `python -m src.main update <id> "Title" "Description"` - Update a task
+- `python -m src.main delete <id>` - Delete a task
+- `python -m src.main complete <id>` - Mark task as complete
+- `python -m src.main incomplete <id>` - Mark task as incomplete
+- `python -m src.main help` - Show help
+
+### Advanced Task Manager
+The project includes a full-featured task manager with persistent storage:
+- `python -m src.main task-manager` - Launch the advanced task manager
+- Features: Add, Update, Delete, View, Mark Complete/Incomplete tasks
+- Persistent storage in `tasks.json`
+- User-friendly menu interface with W/S navigation and Enter selection
+- Advanced features: Export/Import, Search, Statistics
+
+### Main Menu Interface
+The project includes a professional main menu interface with colorful design:
+- `python -m src.main menu` - Launch the main menu interface
+- Features: Add, Update, Delete, View, Mark Complete/Incomplete tasks
+- Persistent storage in `tasks.json`
+- Beautiful colorful UI with centered headers
+- Navigation with 'up'/'down' commands and Enter to select
+- Option to select directly by number
+
+### Code Standards
+See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.

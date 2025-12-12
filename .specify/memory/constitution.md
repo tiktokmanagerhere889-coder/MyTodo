@@ -1,55 +1,47 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: 0.1.0 → 1.0.0
+- Modified principles: All principles replaced with project-specific content
+- Added sections: Specification Rules, Technical Stack Requirements, Code Quality Rules, Agent Behavior Rules
+- Removed sections: None
+- Templates requiring updates: ✅ All templates updated to match new constitution
+- Follow-up TODOs: None
+-->
+# Todo In-Memory Python Console Application Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Spec-Driven Development
+All development must follow spec-driven engineering using Spec-Kit Plus. Every feature, change request, or enhancement must be documented as a spec file inside specs-history/ before any code implementation. Code generation must be performed by Claude Code based strictly on spec files. No code may be generated without an associated spec.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. In-Memory Storage Constraint
+The system must implement a command-line Todo application in Python with all tasks stored in memory only. No database or external storage is permitted. This constraint ensures simplicity and aligns with Phase I requirements for a lightweight console application.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Five Core Features Only (NON-NEGOTIABLE)
+Only the five mandatory core features are implemented in Phase I: Add Task, View Tasks, Update Task, Delete Task, and Mark Complete/Incomplete. No additional features or functionality may be implemented without explicit specification and approval. This ensures focus on core requirements.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Python 3.13+ and UV Dependency Management
+The system must run on Python 3.13+ with UV as the package/dependency tool. All development operations must use Claude Code and Spec-Kit Plus. This ensures consistent and modern development environment across all project operations.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Clean Code Architecture
+Code must follow clean code practices with modular design separated by responsibility. The codebase must follow a clean Python structure with src/main.py, src/todo.py, and src/models/task.py. Functions and classes must include clear names reflecting their purpose. All logic must be modular and separated by responsibility.
 
-### [PRINCIPLE_6_NAME]
+### VI. Version Control with Spec Integration
+Every spec and code change must be committed individually with commit messages that clearly reference the related spec file. No code changes are allowed without a matching spec. This ensures traceability and maintains the spec-driven development workflow.
 
+## Specification Rules
+Each new spec must have a unique incremental filename inside specs-history/. Each spec must include Title, Purpose, Inputs, Expected behavior, and Acceptance criteria. Claude must generate or modify code only after reading the spec. This ensures all development is properly documented and traceable.
 
-[PRINCIPLE__DESCRIPTION]
+## Technical Stack Requirements
+The system must run on Python 3.13+ and UV (Package/dependency tool). Development operations must use Claude Code and Spec-Kit Plus. The repository must contain constitution.md, README.md, and CLAUDE.md at the root level. The repository must include specs-history/ for specification files and src/ for all Python source code.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Code Quality Rules
+Code must follow clean code practices. All logic must be modular and separated by responsibility. No hard-coded paths or credentials are permitted. Functions and classes must include clear names reflecting their purpose. This ensures maintainable and secure code.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Agent Behavior Rules
+Claude must obey this constitution for all code generation. Claude must not hallucinate, assume, or invent unspecified behavior. If a request violates this constitution, Claude must refuse and reference the specific violated rule. All responses from Claude Code must be deterministic and spec-driven.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+This constitution governs all development operations of Phase I. All agents must consistently read and follow this constitution before executing any instruction. Violations must result in an explicit refusal with the violated rule number. Amendments require explicit user consent and documentation of changes. All development must comply with this constitution for every operation, generation, or modification.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-12-09 | **Last Amended**: 2025-12-09
