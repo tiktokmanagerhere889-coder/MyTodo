@@ -1,0 +1,17 @@
+[project]
+name = "todo-app"
+version = "1.0.0"
+description = "A command-line todo application with in-memory storage"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "rich>=13.0.0",
+    "prompt_toolkit>=3.0.0"
+]
+
+[tool.setuptools]
+py-modules = []
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
