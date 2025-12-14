@@ -140,7 +140,7 @@ class TaskManagerApp:
         self.console.clear()
 
         # Display centered, colorful header
-        header_text = Text("🚀 TASKFLOW STUDIO 🚀", style="bold bright_cyan on black")
+        header_text = Text("🚀 CONSOLE APP 🚀", style="bold bright_cyan on black")
         header = Panel(header_text, expand=False, border_style="bright_cyan", padding=(1, 2))
         self.console.print()
         self.console.print(header, justify="center")
@@ -160,7 +160,7 @@ class TaskManagerApp:
         """Display all tasks in a table format"""
         self.console.clear()
 
-        header_text = Text("📋 TASKFLOW STUDIO - TASK LIST 📋", style="bold bright_cyan on black")
+        header_text = Text("📋 CONSOLE APP - TASK LIST 📋", style="bold bright_cyan on black")
         header = Panel(header_text, expand=False, border_style="bright_cyan", padding=(1, 2))
         self.console.print()
         self.console.print(header, justify="center")

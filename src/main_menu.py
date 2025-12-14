@@ -15,6 +15,13 @@ from rich.prompt import Prompt
 from rich.panel import Panel
 from rich.text import Text
 from rich import print
+from enum import Enum
+
+
+class Priority(Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
 
 
 @dataclass
@@ -24,14 +31,22 @@ class Task:
     description: Optional[str] = None
     completed: bool = False
     created_at: datetime = None
+    priority: Priority = Priority.MEDIUM
+    tags: list = None
+    due_date: Optional[datetime] = None
+    is_recurring: bool = False
+    recurrence_pattern: Optional[str] = None  # daily, weekly, monthly, yearly
 
     def __post_init__(self):
         if self.created_at is None:
             self.created_at = datetime.now()
+        if self.tags is None:
+            self.tags = []
 
     def __str__(self):
         status = "✓" if self.completed else "○"
-        return f"[{status}] {self.id}: {self.title}"
+        priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[self.priority.value]
+        return f"[{status}] {priority_emoji} {self.id}: {self.title}"
 
 
 class TaskManager:
@@ -77,12 +92,32 @@ class TaskManager:
                     except ValueError:
                         created_at = datetime.now()
 
+                    # Handle due date
+                    due_date = None
+                    if task_data.get('due_date'):
+                        try:
+                            due_date = datetime.strptime(task_data['due_date'], "%Y-%m-%d")
+                        except ValueError:
+                            due_date = None
+
+                    # Get priority with fallback to medium
+                    priority_str = task_data.get('priority', 'medium')
+                    try:
+                        priority = Priority(priority_str)
+                    except ValueError:
+                        priority = Priority.MEDIUM
+
                     task = Task(
                         id=task_data['id'],
                         title=title,
                         description=description,
                         completed=completed,
-                        created_at=created_at
+                        created_at=created_at,
+                        priority=priority,
+                        tags=task_data.get('tags', []),
+                        due_date=due_date,
+                        is_recurring=task_data.get('is_recurring', False),
+                        recurrence_pattern=task_data.get('recurrence_pattern', None)
                     )
                     self.tasks.append(task)
 
@@ -95,6 +130,54 @@ class TaskManager:
             self.tasks = []
             self.next_id = 1
 
+    def search_tasks(self, query: str) -> List[Task]:
+        """
+        Search tasks by title or description
+        """
+        query_lower = query.lower()
+        return [
+            task for task in self.tasks
+            if query_lower in task.title.lower() or
+            (task.description and query_lower in task.description.lower())
+        ]
+
+    def filter_tasks(self, status: Optional[bool] = None, priority=None, tag: Optional[str] = None) -> List[Task]:
+        """
+        Filter tasks by status, priority, or tag
+        """
+        filtered_tasks = self.tasks
+
+        if status is not None:
+            filtered_tasks = [task for task in filtered_tasks if task.completed == status]
+
+        if priority is not None:
+            filtered_tasks = [task for task in filtered_tasks if task.priority == priority]
+
+        if tag is not None:
+            filtered_tasks = [task for task in filtered_tasks if tag in task.tags]
+
+        return filtered_tasks
+
+    def sort_tasks(self, by: str = 'id', reverse: bool = False) -> List[Task]:
+        """
+        Sort tasks by various criteria
+        by options: 'id', 'title', 'created_at', 'due_date', 'priority'
+        """
+        if by == 'id':
+            return sorted(self.tasks, key=lambda t: t.id, reverse=reverse)
+        elif by == 'title':
+            return sorted(self.tasks, key=lambda t: t.title.lower(), reverse=reverse)
+        elif by == 'created_at':
+            return sorted(self.tasks, key=lambda t: t.created_at, reverse=reverse)
+        elif by == 'due_date':
+            return sorted(self.tasks, key=lambda t: (t.due_date is None, t.due_date), reverse=reverse)
+        elif by == 'priority':
+            # Higher priority values should come first
+            priority_order = {'high': 3, 'medium': 2, 'low': 1}
+            return sorted(self.tasks, key=lambda t: priority_order.get(t.priority.value, 0), reverse=reverse)
+        else:
+            return self.tasks
+
     def save_tasks(self):
         """Save tasks to JSON file"""
         # Prepare tasks for saving in the required format
@@ -105,7 +188,12 @@ class TaskManager:
                 'title': task.title,
                 'description': task.description or '',
                 'completed': task.completed,
-                'created_at': task.created_at.strftime('%Y-%m-%d') if task.created_at else datetime.now().strftime('%Y-%m-%d')
+                'created_at': task.created_at.strftime('%Y-%m-%d') if task.created_at else datetime.now().strftime('%Y-%m-%d'),
+                'priority': task.priority.value if hasattr(task, 'priority') else 'medium',
+                'tags': task.tags if hasattr(task, 'tags') else [],
+                'due_date': task.due_date.strftime("%Y-%m-%d") if hasattr(task, 'due_date') and task.due_date else None,
+                'is_recurring': task.is_recurring if hasattr(task, 'is_recurring') else False,
+                'recurrence_pattern': task.recurrence_pattern if hasattr(task, 'recurrence_pattern') else None
             }
             task_list.append(task_dict)
 
@@ -116,31 +204,47 @@ class TaskManager:
         with open(self.filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
-    def add_task(self, title: str, description: str = None) -> bool:
+    def add_task(self, title: str, description: str = None, priority=None, tags: list = None, due_date=None) -> bool:
         """Add a new task"""
+        from datetime import datetime
+
         if not title.strip():
             return False
+
+        # Use default priority if not specified
+        if priority is None:
+            priority = Priority.MEDIUM
 
         task = Task(
             id=self.next_id,
             title=title.strip(),
             description=description,
             completed=False,
-            created_at=datetime.now()
+            created_at=datetime.now(),
+            priority=priority,
+            tags=tags or [],
+            due_date=due_date
         )
         self.tasks.append(task)
         self.next_id += 1
         self.save_tasks()
         return True
 
-    def update_task(self, task_id: int, new_title: str = None, new_description: str = None) -> bool:
-        """Update a task's title and/or description"""
+    def update_task(self, task_id: int, new_title: str = None, new_description: str = None,
+                    priority=None, tags: list = None, due_date=None) -> bool:
+        """Update a task's title, description, priority, tags, and/or due date"""
         for task in self.tasks:
             if task.id == task_id:
                 if new_title is not None:
                     task.title = new_title.strip()
                 if new_description is not None:
                     task.description = new_description
+                if priority is not None:
+                    task.priority = priority
+                if tags is not None:
+                    task.tags = tags
+                if due_date is not None:
+                    task.due_date = due_date
                 self.save_tasks()
                 return True
         return False
@@ -212,6 +316,9 @@ class MainMenuApp:
             "Delete Task",
             "View Task List",
             "Mark as Complete",
+            "Filter Tasks",
+            "Sort Tasks",
+            "Check Due Tasks",
             "Export Tasks",
             "Import Tasks",
             "Search Tasks",
@@ -223,7 +330,7 @@ class MainMenuApp:
         """Display the main menu with current selection highlighted"""
         self.console.clear()
 
-        # Create a large, prominent header for "TaskFlow Studio" with red accent
+        # Create a large, prominent header for "Console App" with red accent
         from rich.text import Text
 
         # Create the main header with red prominence
@@ -231,21 +338,20 @@ class MainMenuApp:
         header_text.append("╔════════════════════════════════════════════════════════════════════╗\n", style="bold bright_red")
         header_text.append("║                           ", style="bold bright_red")
         header_text.append("🚀 ", style="bold bright_red")
-        header_text.append("T", style="bold bright_red")
-        header_text.append("A", style="bold bright_yellow")
-        header_text.append("S", style="bold bright_green")
-        header_text.append("K", style="bold bright_cyan")
-        header_text.append("F", style="bold bright_blue")
+        header_text.append("C", style="bold bright_red")
+        header_text.append("O", style="bold bright_yellow")
+        header_text.append("N", style="bold bright_green")
+        header_text.append("S", style="bold bright_cyan")
+        header_text.append("O", style="bold bright_blue")
         header_text.append("L", style="bold bright_magenta")
-        header_text.append("O", style="bold bright_white")
-        header_text.append("W", style="bold bright_red")
+        header_text.append("E", style="bold bright_white")
         header_text.append(" ", style="bold bright_red")
-        header_text.append("S", style="bold bright_yellow")
-        header_text.append("T", style="bold bright_green")
-        header_text.append("U", style="bold bright_cyan")
-        header_text.append("D", style="bold bright_blue")
-        header_text.append("I", style="bold bright_magenta")
-        header_text.append("O", style="bold bright_white")
+        header_text.append("A", style="bold bright_yellow")
+        header_text.append("P", style="bold bright_green")
+        header_text.append("P", style="bold bright_cyan")
+        header_text.append(" ", style="bold bright_blue")
+        header_text.append(" ", style="bold bright_magenta")
+        header_text.append(" ", style="bold bright_white")
         header_text.append(" ", style="bold bright_red")
         header_text.append("🚀", style="bold bright_red")
         header_text.append("                           ║\n", style="bold bright_red")
@@ -259,9 +365,27 @@ class MainMenuApp:
         self.console.print()
 
         # Calculate and display task statistics with enhanced formatting
-        total_tasks = len(self.task_manager.get_all_tasks())
-        completed_tasks = len([task for task in self.task_manager.get_all_tasks() if task.completed])
+        all_tasks = self.task_manager.get_all_tasks()
+        total_tasks = len(all_tasks)
+        completed_tasks = len([task for task in all_tasks if task.completed])
         pending_tasks = total_tasks - completed_tasks
+
+        # Calculate additional statistics for new features
+        high_priority_tasks = len([task for task in all_tasks if task.priority.value == 'high'])
+        medium_priority_tasks = len([task for task in all_tasks if task.priority.value == 'medium'])
+        low_priority_tasks = len([task for task in all_tasks if task.priority.value == 'low'])
+
+        recurring_tasks = len([task for task in all_tasks if task.is_recurring])
+
+        # Find due tasks
+        import datetime
+        today = datetime.date.today()
+        overdue_tasks = len([task for task in all_tasks
+                            if task.due_date and not task.completed
+                            and task.due_date.date() < today])
+        due_today_tasks = len([task for task in all_tasks
+                              if task.due_date and not task.completed
+                              and task.due_date.date() == today])
 
         # Create a progress bar visualization
         if total_tasks > 0:
@@ -281,8 +405,28 @@ class MainMenuApp:
 
         progress_text_obj = Text(f"📈 Progress: {progress_text_value}", style="bold bright_magenta")
 
+        # Additional stats for new features
+        features_text = Text()
+        features_text.append("🔥 ", style="bold bright_red")
+        features_text.append(f"High: {high_priority_tasks} | ", style="bold bright_red")
+        features_text.append("🟡 ", style="bold bright_yellow")
+        features_text.append(f"Med: {medium_priority_tasks} | ", style="bold bright_yellow")
+        features_text.append("🟢 ", style="bold bright_green")
+        features_text.append(f"Low: {low_priority_tasks} | ", style="bold bright_green")
+        features_text.append(f"🔄: {recurring_tasks}", style="bold bright_cyan")
+
+        due_text = Text()
+        if overdue_tasks > 0:
+            due_text.append(" ⚠️ ", style="bold bright_red")
+            due_text.append(f"Overdue: {overdue_tasks} | ", style="bold bright_red")
+        due_text.append(" 📅 ", style="bold bright_yellow")
+        due_text.append(f"Due Today: {due_today_tasks}", style="bold bright_yellow")
+
         self.console.print(stats_text)
         self.console.print(progress_text_obj)
+        self.console.print(features_text)
+        if overdue_tasks > 0 or due_today_tasks > 0:
+            self.console.print(due_text)
         self.console.print()
 
         # Display menu options with numbered selection and enhanced highlighting
@@ -340,7 +484,7 @@ class MainMenuApp:
 
         tasks = self.task_manager.get_all_tasks()
 
-        header_text = Text("📋 TASKFLOW STUDIO - TASK LIST 📋", style="bold bright_cyan on black")
+        header_text = Text("📋 CONSOLE APP - TASK LIST 📋", style="bold bright_cyan on black")
         header = Panel(header_text, expand=False, border_style="bright_cyan", padding=(1, 2))
         self.console.print()
         self.console.print(header, justify="center")
@@ -384,21 +528,32 @@ class MainMenuApp:
         table = Table(title="All Tasks", show_header=True, header_style="bold bright_magenta")
         table.add_column("#", style="bold bright_yellow", width=3)  # Row number
         table.add_column("ID", style="bold bright_green", width=5)
-        table.add_column("Title", style="white", width=25)
-        table.add_column("Description", style="white", width=25)
-        table.add_column("Status", style="white", width=12)
+        table.add_column("Title", style="white", width=20)
+        table.add_column("Description", style="white", width=20)
+        table.add_column("Status", style="white", width=10)
+        table.add_column("Priority", style="white", width=10)
+        table.add_column("Due Date", style="white", width=12)
+        table.add_column("Tags", style="white", width=15)
         table.add_column("Date Added", style="white", width=12)
 
         # Add row numbers for easy selection
         for idx, task in enumerate(sorted_tasks, 1):
             status_style = "bold bright_green" if task.completed else "bold bright_red"
             status_text = "Complete" if task.completed else "Pending"
+            priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[task.priority.value]
+            priority_text = f"{priority_emoji} {task.priority.value.title()}"
+            due_date_text = task.due_date.strftime('%Y-%m-%d') if task.due_date else 'None'
+            tags_text = ', '.join(task.tags) if task.tags else 'None'
+
             table.add_row(
                 str(idx),  # Row number
                 str(task.id),
                 task.title,
                 task.description or "",
                 f"[{status_style}]{status_text}[/{status_style}]",
+                f"[{status_style}]{priority_text}[/{status_style}]",
+                due_date_text,
+                tags_text,
                 task.created_at.strftime('%Y-%m-%d') if task.created_at else ''
             )
 
@@ -420,7 +575,36 @@ class MainMenuApp:
         title = input("📝 Enter task title: ")
         description = input("📝 Enter task description: ")
 
-        if self.task_manager.add_task(title, description if description else None):
+        # Get priority
+        priority_input = input("📝 Enter priority (high/medium/low) [default: medium]: ").strip().lower()
+        if priority_input in ['high', 'medium', 'low']:
+            from .models.task import Priority
+            if priority_input == 'high':
+                priority = Priority.HIGH
+            elif priority_input == 'low':
+                priority = Priority.LOW
+            else:
+                priority = Priority.MEDIUM
+        else:
+            from .models.task import Priority
+            priority = Priority.MEDIUM  # default
+
+        # Get tags
+        tags_input = input("📝 Enter tags (comma-separated) [optional]: ").strip()
+        tags = [tag.strip() for tag in tags_input.split(',')] if tags_input else []
+
+        # Get due date
+        due_date_input = input("📝 Enter due date (YYYY-MM-DD) [optional]: ").strip()
+        due_date = None
+        if due_date_input:
+            try:
+                from datetime import datetime
+                due_date = datetime.strptime(due_date_input, "%Y-%m-%d")
+            except ValueError:
+                self.console.print("\n[bold bright_yellow]⚠️ Invalid date format. Task will be added without due date.[/bold bright_yellow]")
+                due_date = None
+
+        if self.task_manager.add_task(title, description if description else None, priority=priority, tags=tags, due_date=due_date):
             self.console.print("\n[bold bright_green]✅ Task added successfully![/bold bright_green]")
         else:
             self.console.print("\n[bold bright_red]❌ Error: Task title cannot be empty.[/bold bright_red]")
@@ -495,7 +679,46 @@ class MainMenuApp:
         if new_description == "":  # If user pressed Enter without typing
             new_description = task.description
 
-        if self.task_manager.update_task(task_id, new_title, new_description):
+        # Get new priority
+        priority_input = input(f"📝 Enter new priority (high/medium/low) [current: {task.priority.value}, press Enter to keep current]: ").strip().lower()
+        if priority_input in ['high', 'medium', 'low']:
+            from .models.task import Priority
+            if priority_input == 'high':
+                new_priority = Priority.HIGH
+            elif priority_input == 'low':
+                new_priority = Priority.LOW
+            else:
+                new_priority = Priority.MEDIUM
+        elif priority_input == "":
+            new_priority = task.priority  # Keep current priority
+        else:
+            self.console.print(f"\n[bold bright_yellow]⚠️ Invalid priority. Keeping current priority: {task.priority.value}[/bold bright_yellow]")
+            new_priority = task.priority
+
+        # Get new tags
+        tags_input = input(f"📝 Enter new tags (comma-separated) [current: {', '.join(task.tags) if task.tags else 'none'}, press Enter to keep current]: ").strip()
+        if tags_input:
+            new_tags = [tag.strip() for tag in tags_input.split(',')]
+        elif tags_input == "":  # User pressed Enter to keep current
+            new_tags = task.tags
+        else:
+            new_tags = []
+
+        # Get new due date
+        due_date_input = input(f"📝 Enter new due date (YYYY-MM-DD) [current: {task.due_date.strftime('%Y-%m-%d') if task.due_date else 'none'}, press Enter to keep current]: ").strip()
+        if due_date_input:
+            try:
+                from datetime import datetime
+                new_due_date = datetime.strptime(due_date_input, "%Y-%m-%d")
+            except ValueError:
+                self.console.print("\n[bold bright_yellow]⚠️ Invalid date format. Keeping current due date.[/bold bright_yellow]")
+                new_due_date = task.due_date
+        elif due_date_input == "":  # User pressed Enter to keep current
+            new_due_date = task.due_date
+        else:
+            new_due_date = None
+
+        if self.task_manager.update_task(task_id, new_title, new_description, priority=new_priority, tags=new_tags, due_date=new_due_date):
             self.console.print(f"\n[bold bright_green]✅ Task {task_id} updated successfully![/bold bright_green]")
         else:
             self.console.print(f"\n[bold bright_red]❌ Error: Failed to update task {task_id}.[/bold bright_red]")
@@ -757,16 +980,8 @@ class MainMenuApp:
             input("\nPress Enter to return to main menu...")
             return
 
-        try:
-            # Try to convert to integer for ID search
-            search_id = int(search_term)
-            tasks = [task for task in self.task_manager.get_all_tasks() if task.id == search_id]
-        except ValueError:
-            # Search by title and description
-            search_term_lower = search_term.lower()
-            tasks = [task for task in self.task_manager.get_all_tasks()
-                    if search_term_lower in task.title.lower() or
-                    (task.description and search_term_lower in task.description.lower())]
+        # Use the new search_tasks method which searches in title and description
+        tasks = self.task_manager.search_tasks(search_term)
 
         if tasks:
             self.console.print(f"[bold bright_green]Found {len(tasks)} matching task(s):[/bold bright_green]")
@@ -774,25 +989,292 @@ class MainMenuApp:
 
             table = Table(title="Search Results", show_header=True, header_style="bold bright_magenta")
             table.add_column("ID", style="bold bright_green", width=5)
-            table.add_column("Title", style="white", width=25)
-            table.add_column("Description", style="white", width=25)
-            table.add_column("Status", style="white", width=12)
+            table.add_column("Title", style="white", width=20)
+            table.add_column("Description", style="white", width=20)
+            table.add_column("Status", style="white", width=10)
+            table.add_column("Priority", style="white", width=10)
+            table.add_column("Due Date", style="white", width=12)
+            table.add_column("Tags", style="white", width=15)
             table.add_column("Date Added", style="white", width=12)
 
             for task in tasks:
                 status_style = "bold bright_green" if task.completed else "bold bright_red"
                 status_text = "Complete" if task.completed else "Pending"
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[task.priority.value]
+                priority_text = f"{priority_emoji} {task.priority.value.title()}"
+                due_date_text = task.due_date.strftime('%Y-%m-%d') if task.due_date else 'None'
+                tags_text = ', '.join(task.tags) if task.tags else 'None'
+
                 table.add_row(
                     str(task.id),
                     task.title,
                     task.description or "",
                     f"[{status_style}]{status_text}[/{status_style}]",
+                    f"[{status_style}]{priority_text}[/{status_style}]",
+                    due_date_text,
+                    tags_text,
                     task.created_at.strftime('%Y-%m-%d') if task.created_at else ''
                 )
 
             self.console.print(table)
         else:
             self.console.print("[bold bright_yellow]No tasks found matching your search.[/bold bright_yellow]")
+
+        input("\nPress Enter to return to main menu...")
+
+    def filter_tasks_flow(self):
+        """Filter tasks by status, priority, or tag"""
+        self.console.clear()
+
+        header_text = Text("🔍 FILTER TASKS 🔍", style="bold bright_magenta on black")
+        header = Panel(header_text, expand=False, border_style="bright_magenta", padding=(1, 2))
+        self.console.print()
+        self.console.print(header, justify="center")
+        self.console.print()
+
+        # Get filter criteria from user
+        status_input = input("Enter status to filter (completed/incomplete) [optional]: ").strip().lower()
+        if status_input in ['completed', 'complete', 'done']:
+            status = True
+        elif status_input in ['incomplete', 'pending', 'todo']:
+            status = False
+        elif status_input == "":
+            status = None
+        else:
+            self.console.print(f"\n[bold bright_yellow]⚠️ Invalid status. No status filter will be applied.[/bold bright_yellow]")
+            status = None
+
+        priority_input = input("Enter priority to filter (high/medium/low) [optional]: ").strip().lower()
+        if priority_input in ['high', 'medium', 'low']:
+            from .models.task import Priority
+            if priority_input == 'high':
+                priority = Priority.HIGH
+            elif priority_input == 'low':
+                priority = Priority.LOW
+            else:
+                priority = Priority.MEDIUM
+        elif priority_input == "":
+            priority = None
+        else:
+            self.console.print(f"\n[bold bright_yellow]⚠️ Invalid priority. No priority filter will be applied.[/bold bright_yellow]")
+            priority = None
+
+        tag_input = input("Enter tag to filter [optional]: ").strip()
+        if tag_input == "":
+            tag = None
+        else:
+            tag = tag_input
+
+        # Apply filters
+        tasks = self.task_manager.filter_tasks(status=status, priority=priority, tag=tag)
+
+        if tasks:
+            self.console.print(f"\n[bold bright_green]Found {len(tasks)} filtered task(s):[/bold bright_green]")
+            self.console.print()
+
+            table = Table(title="Filtered Tasks", show_header=True, header_style="bold bright_magenta")
+            table.add_column("#", style="bold bright_yellow", width=3)  # Row number
+            table.add_column("ID", style="bold bright_green", width=5)
+            table.add_column("Title", style="white", width=20)
+            table.add_column("Description", style="white", width=20)
+            table.add_column("Status", style="white", width=10)
+            table.add_column("Priority", style="white", width=10)
+            table.add_column("Due Date", style="white", width=12)
+            table.add_column("Tags", style="white", width=15)
+            table.add_column("Date Added", style="white", width=12)
+
+            # Add row numbers for easy selection
+            for idx, task in enumerate(tasks, 1):  # Using the filtered tasks directly
+                status_style = "bold bright_green" if task.completed else "bold bright_red"
+                status_text = "Complete" if task.completed else "Pending"
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[task.priority.value]
+                priority_text = f"{priority_emoji} {task.priority.value.title()}"
+                due_date_text = task.due_date.strftime('%Y-%m-%d') if task.due_date else 'None'
+                tags_text = ', '.join(task.tags) if task.tags else 'None'
+
+                table.add_row(
+                    str(idx),  # Row number
+                    str(task.id),
+                    task.title,
+                    task.description or "",
+                    f"[{status_style}]{status_text}[/{status_style}]",
+                    f"[{status_style}]{priority_text}[/{status_style}]",
+                    due_date_text,
+                    tags_text,
+                    task.created_at.strftime('%Y-%m-%d') if task.created_at else ''
+                )
+
+            self.console.print(table)
+        else:
+            self.console.print("\n[bold bright_yellow]No tasks found matching the filter criteria.[/bold bright_yellow]")
+
+        input("\nPress Enter to return to main menu...")
+
+    def sort_tasks_flow(self):
+        """Sort tasks by various criteria"""
+        self.console.clear()
+
+        header_text = Text("📊 SORT TASKS 📊", style="bold bright_magenta on black")
+        header = Panel(header_text, expand=False, border_style="bright_magenta", padding=(1, 2))
+        self.console.print()
+        self.console.print(header, justify="center")
+        self.console.print()
+
+        # Get sort criteria from user
+        print("Sort options: id, title, date, priority, due_date")
+        by_input = input("Enter sort criteria [default: id]: ").strip().lower()
+        if by_input in ['id', 'title', 'date', 'priority', 'due_date']:
+            by = by_input
+            if by == 'date':
+                by = 'created_at'  # map 'date' to 'created_at'
+        elif by_input == "":
+            by = 'id'  # default
+        else:
+            self.console.print(f"\n[bold bright_yellow]⚠️ Invalid sort option. Using default (id).[/bold bright_yellow]")
+            by = 'id'
+
+        order_input = input("Enter sort order (asc/desc) [default: asc]: ").strip().lower()
+        if order_input in ['desc', 'descending', 'reverse']:
+            reverse = True
+        elif order_input in ['asc', 'ascending', '']:
+            reverse = False  # default
+        else:
+            self.console.print(f"\n[bold bright_yellow]⚠️ Invalid order. Using ascending order.[/bold bright_yellow]")
+            reverse = False
+
+        # Apply sorting
+        tasks = self.task_manager.sort_tasks(by=by, reverse=reverse)
+
+        if tasks:
+            order_str = "descending" if reverse else "ascending"
+            self.console.print(f"\n[bold bright_green]Tasks sorted by {by} ({order_str}):[/bold bright_green]")
+            self.console.print()
+
+            table = Table(title=f"Tasks Sorted by {by.title()}", show_header=True, header_style="bold bright_magenta")
+            table.add_column("#", style="bold bright_yellow", width=3)  # Row number
+            table.add_column("ID", style="bold bright_green", width=5)
+            table.add_column("Title", style="white", width=20)
+            table.add_column("Description", style="white", width=20)
+            table.add_column("Status", style="white", width=10)
+            table.add_column("Priority", style="white", width=10)
+            table.add_column("Due Date", style="white", width=12)
+            table.add_column("Tags", style="white", width=15)
+            table.add_column("Date Added", style="white", width=12)
+
+            # Add row numbers for easy selection
+            for idx, task in enumerate(tasks, 1):  # Using the sorted tasks
+                status_style = "bold bright_green" if task.completed else "bold bright_red"
+                status_text = "Complete" if task.completed else "Pending"
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[task.priority.value]
+                priority_text = f"{priority_emoji} {task.priority.value.title()}"
+                due_date_text = task.due_date.strftime('%Y-%m-%d') if task.due_date else 'None'
+                tags_text = ', '.join(task.tags) if task.tags else 'None'
+
+                table.add_row(
+                    str(idx),  # Row number
+                    str(task.id),
+                    task.title,
+                    task.description or "",
+                    f"[{status_style}]{status_text}[/{status_style}]",
+                    f"[{status_style}]{priority_text}[/{status_style}]",
+                    due_date_text,
+                    tags_text,
+                    task.created_at.strftime('%Y-%m-%d') if task.created_at else ''
+                )
+
+            self.console.print(table)
+        else:
+            self.console.print("\n[bold bright_yellow]No tasks to display.[/bold bright_yellow]")
+
+        input("\nPress Enter to return to main menu...")
+
+    def check_due_tasks_flow(self):
+        """Check and display tasks that are due today or overdue"""
+        self.console.clear()
+
+        header_text = Text("📅 CHECK DUE TASKS 📅", style="bold bright_magenta on black")
+        header = Panel(header_text, expand=False, border_style="bright_magenta", padding=(1, 2))
+        self.console.print()
+        self.console.print(header, justify="center")
+        self.console.print()
+
+        import datetime
+        today = datetime.date.today()
+
+        # Find tasks that are due today or overdue
+        due_tasks = []
+        overdue_tasks = []
+
+        for task in self.task_manager.get_all_tasks():
+            if task.due_date and not task.completed:
+                due_date = task.due_date.date() if isinstance(task.due_date, datetime.datetime) else task.due_date
+
+                if due_date < today:
+                    overdue_tasks.append(task)
+                elif due_date == today:
+                    due_tasks.append(task)
+
+        if overdue_tasks:
+            self.console.print(f"\n[bold bright_red]⚠️ {len(overdue_tasks)} OVERDUE TASK(S):[/bold bright_red]")
+            self.console.print()
+
+            table = Table(title="Overdue Tasks", show_header=True, header_style="bold bright_red")
+            table.add_column("ID", style="bold bright_red", width=5)
+            table.add_column("Title", style="white", width=25)
+            table.add_column("Description", style="white", width=25)
+            table.add_column("Priority", style="white", width=10)
+            table.add_column("Due Date", style="white", width=12)
+            table.add_column("Tags", style="white", width=15)
+
+            for task in overdue_tasks:
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[task.priority.value]
+                priority_text = f"{priority_emoji} {task.priority.value.title()}"
+                due_date_text = task.due_date.strftime('%Y-%m-%d') if task.due_date else 'None'
+                tags_text = ', '.join(task.tags) if task.tags else 'None'
+
+                table.add_row(
+                    str(task.id),
+                    task.title,
+                    task.description or "",
+                    f"[bold bright_red]{priority_text}[/bold bright_red]",
+                    f"[bold bright_red]{due_date_text}[/bold bright_red]",
+                    tags_text
+                )
+
+            self.console.print(table)
+            self.console.print()
+
+        if due_tasks:
+            self.console.print(f"\n[bold bright_yellow]📅 {len(due_tasks)} TASK(S) DUE TODAY:[/bold bright_yellow]")
+            self.console.print()
+
+            table = Table(title="Tasks Due Today", show_header=True, header_style="bold bright_yellow")
+            table.add_column("ID", style="bold bright_yellow", width=5)
+            table.add_column("Title", style="white", width=25)
+            table.add_column("Description", style="white", width=25)
+            table.add_column("Priority", style="white", width=10)
+            table.add_column("Due Date", style="white", width=12)
+            table.add_column("Tags", style="white", width=15)
+
+            for task in due_tasks:
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[task.priority.value]
+                priority_text = f"{priority_emoji} {task.priority.value.title()}"
+                due_date_text = task.due_date.strftime('%Y-%m-%d') if task.due_date else 'None'
+                tags_text = ', '.join(task.tags) if task.tags else 'None'
+
+                table.add_row(
+                    str(task.id),
+                    task.title,
+                    task.description or "",
+                    f"[bold bright_yellow]{priority_text}[/bold bright_yellow]",
+                    f"[bold bright_yellow]{due_date_text}[/bold bright_yellow]",
+                    tags_text
+                )
+
+            self.console.print(table)
+
+        if not overdue_tasks and not due_tasks:
+            self.console.print("\n[bold bright_green]✅ No tasks are due today or overdue![/bold bright_green]")
 
         input("\nPress Enter to return to main menu...")
 
@@ -863,12 +1345,12 @@ class MainMenuApp:
                 try:
                     choice = input("\n[bold bright_cyan]Use W/S to navigate, Enter to select, or enter option number (Q to quit): [/bold bright_cyan]").strip().lower()
                 except EOFError:
-                    self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using TaskFlow Studio! 👋[/bold bright_cyan]")
+                    self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using Console App! 👋[/bold bright_cyan]")
                     break
 
                 # Handle navigation and selection
                 if choice == 'q':
-                    self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using TaskFlow Studio! 👋[/bold bright_cyan]")
+                    self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using Console App! 👋[/bold bright_cyan]")
                     break
                 elif choice == 'w':
                     self.current_selection = (self.current_selection - 1) % len(self.menu_options)
@@ -888,6 +1370,12 @@ class MainMenuApp:
                         self.display_task_list()
                     elif selected_option == "Mark as Complete":
                         self.mark_complete_flow()
+                    elif selected_option == "Filter Tasks":
+                        self.filter_tasks_flow()
+                    elif selected_option == "Sort Tasks":
+                        self.sort_tasks_flow()
+                    elif selected_option == "Check Due Tasks":
+                        self.check_due_tasks_flow()
                     elif selected_option == "Export Tasks":
                         self.export_tasks_flow()
                     elif selected_option == "Import Tasks":
@@ -897,7 +1385,7 @@ class MainMenuApp:
                     elif selected_option == "Task Statistics":
                         self.task_statistics_flow()
                     elif selected_option == "Exit":
-                        self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using TaskFlow Studio! 👋[/bold bright_cyan]")
+                        self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using Console App! 👋[/bold bright_cyan]")
                         break
                 elif choice.isdigit():
                     # Allow direct selection by number
@@ -917,6 +1405,12 @@ class MainMenuApp:
                             self.display_task_list()
                         elif selected_option == "Mark as Complete":
                             self.mark_complete_flow()
+                        elif selected_option == "Filter Tasks":
+                            self.filter_tasks_flow()
+                        elif selected_option == "Sort Tasks":
+                            self.sort_tasks_flow()
+                        elif selected_option == "Check Due Tasks":
+                            self.check_due_tasks_flow()
                         elif selected_option == "Export Tasks":
                             self.export_tasks_flow()
                         elif selected_option == "Import Tasks":
@@ -926,10 +1420,10 @@ class MainMenuApp:
                         elif selected_option == "Task Statistics":
                             self.task_statistics_flow()
                         elif selected_option == "Exit":
-                            self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using TaskFlow Studio! 👋[/bold bright_cyan]")
+                            self.console.print("\n[bold bright_cyan]👋 Goodbye! Thanks for using Console App! 👋[/bold bright_cyan]")
                             break
         except KeyboardInterrupt:
-            self.console.print("\n\n[bold bright_cyan]👋 Goodbye! Thanks for using TaskFlow Studio! 👋[/bold bright_cyan]")
+            self.console.print("\n\n[bold bright_cyan]👋 Goodbye! Thanks for using Console App! 👋[/bold bright_cyan]")
 
 
 def main():

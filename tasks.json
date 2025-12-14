@@ -5,85 +5,171 @@
       "title": "",
       "description": "q",
       "completed": true,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 2,
       "title": "",
       "description": "salary",
       "completed": true,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 3,
       "title": "",
       "description": "Test final task",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 4,
       "title": "",
       "description": "salary",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 5,
       "title": "",
       "description": "Test Title: Test Description",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 6,
       "title": "",
       "description": "hi: salaru",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 7,
       "title": "",
       "description": "Test Title: Test Description",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 8,
       "title": "",
       "description": "NEW: SALARY",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 9,
       "title": "",
       "description": "new: new",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 10,
       "title": "",
       "description": "Test from numbered menu: q",
-      "completed": false,
-      "created_at": "2025-12-11"
+      "completed": true,
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 12,
       "title": "Test from CLI",
       "description": "This task was added from the CLI",
       "completed": true,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     },
     {
       "id": 13,
       "title": "SALARY",
       "description": "november salary ",
       "completed": false,
-      "created_at": "2025-12-11"
+      "created_at": "2025-12-11",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
+    },
+    {
+      "id": 14,
+      "title": "December Salary",
+      "description": "12000",
+      "completed": true,
+      "created_at": "2025-12-13",
+      "priority": "high",
+      "tags": [
+        "#"
+      ],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
+    },
+    {
+      "id": 15,
+      "title": "Test task",
+      "description": "This is a test",
+      "completed": false,
+      "created_at": "2025-12-14",
+      "priority": "medium",
+      "tags": [],
+      "due_date": null,
+      "is_recurring": false,
+      "recurrence_pattern": null
     }
   ],
-  "next_id": 14
+  "next_id": 16
 }

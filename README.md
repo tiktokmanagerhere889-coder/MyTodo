@@ -1,4 +1,4 @@
-# TaskFlow Studio - Professional CLI Task Manager
+# Console App - Professional CLI Task Manager
 
 A feature-rich, professional command-line task management application with a beautiful, interactive interface.
 
@@ -63,7 +63,7 @@ python -m src.main incomplete 1
 python -m src.main help
 ```
 
-#### TaskFlow Studio (Professional Interface):
+#### Console App (Professional Interface):
 ```bash
 # Launch the professional task manager with colorful UI
 python -m src.main menu
@@ -71,7 +71,7 @@ python -m src.main menu
 
 ## 🎨 User Interface
 
-The TaskFlow Studio features:
+The Console App features:
 - Beautiful 3D-styled headers with color gradients
 - Interactive menu with keyboard navigation (W/S keys or number selection)
 - Real-time task statistics and progress visualization
@@ -87,7 +87,7 @@ MyTodo/
 │   ├── todo.py            # Core task management
 │   ├── models/            # Data models
 │   │   └── task.py        # Task dataclass
-│   └── main_menu.py       # TaskFlow Studio interface
+│   └── main_menu.py       # Console App interface
 ├── tasks.json             # Task storage file
 ├── README.md              # This file
 ├── CLAUDE.md              # Development documentation
